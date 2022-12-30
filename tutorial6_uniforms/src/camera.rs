@@ -144,13 +144,11 @@ impl CameraController {
                 true
             },
             DeviceEvent::MouseWheel { delta } => {
-                match delta {
-                    MouseScrollDelta::LineDelta(_, delta_y) => {
-                        self.mouse_scroll_delta += delta_y;
-                        true
-                    },
-                    _ => false
+                if let MouseScrollDelta::LineDelta(_, delta_y) = delta {
+                    self.mouse_scroll_delta += delta_y;
+                    return true;
                 }
+                false
             }
             _ => false
         }

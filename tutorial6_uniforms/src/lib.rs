@@ -1,7 +1,7 @@
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
-    window::{WindowBuilder, Window},
+    window::*,
 };
 
 use wgpu::util::DeviceExt;
@@ -28,6 +28,7 @@ struct State {
     camera_controller: camera::CameraController,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
+    cursor_captured: bool,
 }
 
 impl State {
@@ -246,6 +247,7 @@ impl State {
             camera_controller,
             camera_buffer,
             camera_bind_group,
+            cursor_captured: false,
         }
     }
 
@@ -321,13 +323,13 @@ pub async fn run() {
 
     event_loop.run(move |event, _, control_flow| {
         match event {
-            Event::DeviceEvent { event, .. } => {
+            Event::DeviceEvent { event, .. } if state.cursor_captured => {
                 state.input(&event);
             },
             Event::WindowEvent { ref event, window_id } if window_id == window.id() => {
                 match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
+                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
                                 state: ElementState::Pressed,
@@ -335,12 +337,21 @@ pub async fn run() {
                                 ..
                             },
                         ..
-                    } => *control_flow = ControlFlow::Exit,
+                    } => {
+                        state.cursor_captured = false;
+                        window.set_cursor_grab(CursorGrabMode::None).expect("Should be able to ungrab the cursor");
+                        window.set_cursor_visible(true);
+                    }
                     WindowEvent::Resized(physical_size) => {
                         state.resize(*physical_size);
                     },
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         state.resize(**new_inner_size);
+                    },
+                    WindowEvent::MouseInput { button: MouseButton::Left, .. } => {
+                        state.cursor_captured = true;
+                        window.set_cursor_grab(CursorGrabMode::Confined).expect("Should be able to grab the cursor");
+                        window.set_cursor_visible(false);
                     },
                     _ => {}
                 }
